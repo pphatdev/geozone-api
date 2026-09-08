@@ -1,6 +1,20 @@
-# GeoZone API 🌍📍
+<p align="center">
+  <img src="./assets/cover.jpg" alt="GeoZone API - High Performance Geospatial Viewport Engine" width="100%" style="border-radius: 8px;" />
+</p>
 
-High-performance geospatial REST API for dynamic store and merchant filtering by map viewport bounding boxes, powered by **Hono.js**, **Drizzle ORM**, and **PostgreSQL**.
+<h1 align="center">GeoZone API 🌍📍</h1>
+
+<p align="center">
+  <strong>High-performance geospatial REST API for dynamic store and merchant filtering by map viewport bounding boxes, powered by Hono.js, Drizzle ORM, and PostgreSQL.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Hono.js-E36002?style=for-the-badge&logo=hono&logoColor=white" alt="Hono.js" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Drizzle_ORM-C5F74F?style=for-the-badge&logo=drizzle&logoColor=black" alt="Drizzle ORM" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Leaflet-199900?style=for-the-badge&logo=leaflet&logoColor=white" alt="Leaflet" />
+</p>
 
 ---
 
@@ -30,6 +44,8 @@ High-performance geospatial REST API for dynamic store and merchant filtering by
 
 ```text
 .
+├── assets/                   # Repository media & banners
+│   └── cover.jpg             # Project cover banner
 ├── drizzle/                  # SQL migrations & seeds
 │   ├── 0000_init_shops.sql   # Initial schema migration
 │   └── seed.sql              # Standalone SQL seed script
@@ -44,7 +60,7 @@ High-performance geospatial REST API for dynamic store and merchant filtering by
 │   │   ├── schema.ts         # Drizzle schema definition
 │   │   └── seed.ts           # Sample data seeder
 │   ├── routes/
-│   │   └── shopRoutes.ts     # Express router (/api/shops)
+│   │   └── shopRoutes.ts     # Hono router (/api/shops)
 │   └── app.ts                # Application entrypoint
 ├── .env                      # Local environment configuration
 ├── .env.example              # Template environment variables
