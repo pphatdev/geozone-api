@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viewport Shop Explorer - Clean OSM Test</title>
+  <meta name="description" content="Clean and modern OpenStreetMap viewport shop filtering test" />
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-surface: #0f172a;
+      --bg-panel: rgba(15, 23, 42, 0.88);
+      --bg-card: rgba(30, 41, 59, 0.65);
+      --bg-card-hover: rgba(51, 65, 85, 0.85);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.35);
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(56, 189, 248, 0.5);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Clean Header */
+    header {
+      background: rgba(9, 13, 22, 0.95);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 1000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .brand-icon svg {
+      width: 18px;
+      height: 18px;
+      color: #fff;
+    }
+
+    .brand h1 {
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
+    }
+
+    .brand span {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: block;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Map Engine / Theme Selector */
+    .theme-select {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .theme-select:hover, .theme-select:focus {
+      border-color: var(--accent);
+      background: rgba(30, 41, 59, 0.95);
+    }
+
+    .preset-btn {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preset-btn:hover {
+      background: rgba(51, 65, 85, 0.8);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .preset-btn.active {
+      background: rgba(2, 132, 199, 0.25);
+      border-color: var(--accent);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    /* Main Container */
+    .app-main {
+      flex: 1;
+      position: relative;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+      width: 100%;
+      background: #090d16;
+      z-index: 10;
+    }
+
+    /* Clean Tile Filter Overrides */
+    .clean-map-tiles .leaflet-tile {
+      filter: saturate(0.85) contrast(1.04) brightness(0.98);
+    }
+
+    .clean-osm-mode .leaflet-tile {
+      filter: saturate(0.65) contrast(1.08) brightness(0.98);
+    }
+
+    /* Minimal Leaflet Zoom Control */
+    .leaflet-bar {
+      border: none !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+      border-radius: 10px !important;
+      overflow: hidden !important;
+      margin-right: 18px !important;
+      margin-top: 18px !important;
+    }
+
+    .leaflet-bar a {
+      background: rgba(15, 23, 42, 0.9) !important;
+      backdrop-filter: blur(12px) !important;
+      color: #f8fafc !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      width: 34px !important;
+      height: 34px !important;
+      line-height: 34px !important;
+      font-size: 16px !important;
+      transition: all 0.2s !important;
+    }
+
+    .leaflet-bar a:hover {
+      background: #1e293b !important;
+      color: var(--accent) !important;
+    }
+
+    .leaflet-control-attribution {
+      background: rgba(15, 23, 42, 0.6) !important;
+      color: #64748b !important;
+      backdrop-filter: blur(8px);
+      font-size: 10px !important;
+      border-top-left-radius: 6px;
+      padding: 2px 8px !important;
+    }
+
+    .leaflet-control-attribution a {
+      color: #94a3b8 !important;
+      text-decoration: none;
+    }
+
+    /* Floating Viewport Telemetry HUD */
+    .viewport-pill {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+      z-index: 500;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+    }
+
+    .viewport-pill b {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Right Sidebar */
+    .sidebar {
+      width: 380px;
+      max-width: 90vw;
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 500;
+    }
+
+    .sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .count-badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .latency-badge {
+      font-size: 0.72rem;
+      color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .sidebar-search {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      background: rgba(15, 23, 42, 0.95);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+    }
+
+    .shops-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .shop-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .shop-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .shop-card.active {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .shop-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      line-height: 1.3;
+    }
+
+    .shop-status {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status-open {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-closed {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .shop-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .shop-tag {
+      font-size: 0.7rem;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 2px 8px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .shop-coords {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .shop-contact {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 6px;
+    }
+
+    /* Bottom API Inspector Bar */
+    .api-inspector {
+      background: rgba(9, 13, 22, 0.95);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-color);
+      padding: 8px 20px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 1000;
+    }
+
+    .api-url-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .method-badge {
+      background: #0284c7;
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .api-url {
+      font-family: 'JetBrains Mono', monospace;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .copy-btn, .json-btn {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover, .json-btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* JSON Modal */
+    .json-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .json-modal.open {
+      display: flex;
+    }
+
+    .json-content {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 700px;
+      max-width: 90vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7);
+    }
+
+    .json-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .json-header h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+
+    .json-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      background: #090d16;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+    }
+
+    /* Clean Apple/Airbnb Style Map Pin */
+    .clean-pin {
+      position: relative;
+      width: 36px;
+      height: 42px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .clean-pin:hover {
+      transform: scale(1.18) translateY(-4px);
+      z-index: 9999 !important;
+    }
+
+    .pin-halo {
+      position: absolute;
+      top: 2px;
+      left: 3px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.35);
+      animation: pin-pulse 2.4s infinite ease-out;
+      pointer-events: none;
+    }
+
+    .pin-closed .pin-halo {
+      background: rgba(245, 158, 11, 0.35);
+    }
+
+    @keyframes pin-pulse {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .pin-bubble {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 2px solid #10b981;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(16, 185, 129, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #10b981;
+      position: relative;
+      z-index: 2;
+      transition: all 0.2s;
+    }
+
+    .pin-closed .pin-bubble {
+      border-color: #f59e0b;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(245, 158, 11, 0.35);
+      color: #f59e0b;
+    }
+
+    .pin-icon {
+      width: 17px;
+      height: 17px;
+    }
+
+    .pin-point {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #10b981;
+      margin-top: -2px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .pin-closed .pin-point {
+      border-top-color: #f59e0b;
+    }
+
+    /* Clean Modern Popup */
+    .leaflet-popup-content-wrapper {
+      background: rgba(15, 23, 42, 0.95) !important;
+      color: #fff !important;
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px !important;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
+      padding: 4px;
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(15, 23, 42, 0.95) !important;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .clean-popup {
+      font-family: 'Inter', sans-serif;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #fff;
+      min-width: 210px;
+    }
+
+    .clean-popup-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #f8fafc;
+      line-height: 1.25;
+    }
+
+    .clean-popup-sub {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Clean Pin Tooltip */
+    .clean-tooltip {
+      background: rgba(15, 23, 42, 0.92) !important;
+      backdrop-filter: blur(8px) !important;
+      color: #f8fafc !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      border-radius: 8px !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 0.74rem !important;
+      font-weight: 600 !important;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
+      padding: 4px 10px !important;
+    }
+
+    .clean-tooltip::before {
+      border-top-color: rgba(15, 23, 42, 0.92) !important;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+          <line x1="8" y1="2" x2="8" y2="18"></line>
+          <line x1="16" y1="6" x2="16" y2="22"></line>
+        </svg>
+      </div>
+      <div>
+        <h1>Viewport Shop Explorer</h1>
+        <span>PostgreSQL & Drizzle ORM Viewport Filter</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="preset-btn active" onclick="jumpTo('phnom_penh')">Phnom Penh</button>
+      <button class="preset-btn" onclick="jumpTo('cambodia')">All Cambodia</button>
+      <button class="preset-btn" onclick="jumpTo('siem_reap')">Siem Reap</button>
+      <button class="preset-btn" onclick="jumpTo('sihanoukville')">Sihanoukville</button>
+      
+      <!-- Clean Tile Switcher -->
+      <select id="tileSelect" class="theme-select" onchange="changeMapTheme(this.value)">
+        <option value="positron" selected>Map: Clean Light (Positron)</option>
+        <option value="dark">Map: Sleek Dark (Matter)</option>
+        <option value="voyager">Map: Soft Color (Voyager)</option>
+        <option value="osm">Map: OSM Standard (Filtered)</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Main Map & Sidebar -->
+  <div class="app-main">
+    <div id="map" class="clean-map-tiles"></div>
+
+    <!-- Floating Live Viewport Bounds Pill -->
+    <div class="viewport-pill" id="boundsPill">
+      <div><b>SW:</b> <span id="swCoord">Loading...</span></div>
+      <div><b>NE:</b> <span id="neCoord">Loading...</span></div>
+      <div><b>Zoom:</b> <span id="zoomLevel">14</span></div>
+    </div>
+
+    <!-- Right Sidebar with Visible Shops -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <span>Shops in Viewport</span>
+          <span class="count-badge" id="shopCount">0</span>
+        </div>
+        <div class="latency-badge" id="latencyBadge">-- ms</div>
+      </div>
+
+      <div class="sidebar-search">
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="Filter visible shops by name or category..." 
+          oninput="renderShopCards()"
+        />
+      </div>
+
+      <div class="shops-list" id="shopsList">
+        <div class="empty-state">Pan or zoom map to load shops...</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Bottom API Inspector Bar -->
+  <footer class="api-inspector">
+    <div class="api-url-wrapper">
+      <span class="method-badge">GET</span>
+      <span class="api-url" id="apiUrlDisplay">Waiting for map movement...</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="copy-btn" onclick="copyApiUrl()">Copy URL</button>
+      <button class="json-btn" onclick="toggleJsonModal()">View Raw JSON</button>
+    </div>
+  </footer>
+
+  <!-- Raw JSON Modal -->
+  <div class="json-modal" id="jsonModal" onclick="handleModalBackdropClick(event)">
+    <div class="json-content">
+      <div class="json-header">
+        <h3>Live API Response Payload</h3>
+        <button class="close-btn" onclick="toggleJsonModal()">&times;</button>
+      </div>
+      <pre class="json-body" id="jsonBody">// No response yet</pre>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script>
+    // State
+    let map;
+    let markersLayer;
+    let currentTileLayer;
+    let currentShops = [];
+    let lastResponseData = null;
+    let debounceTimer = null;
+    let currentApiUrl = '';
+    let osmApiKey = '';
+    let cartoApiKey = '';
+
+    const presets = {
+      phnom_penh: { center: [11.5658, 104.9100], zoom: 14 },
+      cambodia: { center: [12.2, 104.5], zoom: 8 },
+      siem_reap: { center: [13.3633, 103.8564], zoom: 13 },
+      sihanoukville: { center: [10.6275, 103.5221], zoom: 13 }
+    };
+
+    function getTileUrl(themeKey) {
+      const activeKey = cartoApiKey || osmApiKey || '';
+      const keyQuery = activeKey ? `?key=${encodeURIComponent(activeKey)}` : '';
+
+      switch (themeKey) {
+        case 'voyager':
+          return `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${keyQuery}`;
+        case 'dark':
+          return `https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png${keyQuery}`;
+        case 'positron':
+          return `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${keyQuery}`;
+        case 'osm':
+          return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        case 'maptiler':
+          return `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${encodeURIComponent(activeKey)}`;
+        default:
+          return `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png${keyQuery}`;
+      }
+    }
+
+    async function fetchConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.cartoApiKey || data.osmApiKey) {
+          cartoApiKey = data.cartoApiKey || data.osmApiKey;
+          osmApiKey = data.osmApiKey || data.cartoApiKey;
+        }
+      } catch (err) {
+        console.error('Failed to fetch config:', err);
+      }
+    }
+
+    function initLeafletMap() {
+      map = L.map('map', { 
+        zoomControl: false,
+        fadeAnimation: true
+      }).setView(presets.phnom_penh.center, presets.phnom_penh.zoom);
+
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // Default to CartoDB Positron with CARTO key
+      currentTileLayer = L.tileLayer(getTileUrl('positron'), {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> & OpenStreetMap',
+        maxZoom: 19
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+
+      map.on('move', updateBoundsDisplay);
+      map.on('moveend', () => debounceFetchShops(150));
+
+      updateBoundsDisplay();
+      triggerFetchForLeaflet();
+    }
+
+    function changeMapTheme(themeKey) {
+      if (currentTileLayer && map) {
+        map.removeLayer(currentTileLayer);
+      }
+      
+      const mapEl = document.getElementById('map');
+      if (themeKey === 'osm') {
+        mapEl.classList.add('clean-osm-mode');
+        mapEl.classList.remove('clean-map-tiles');
+      } else {
+        mapEl.classList.remove('clean-osm-mode');
+        mapEl.classList.add('clean-map-tiles');
+      }
+
+      currentTileLayer = L.tileLayer(getTileUrl(themeKey), {
+        attribution: '&copy; OpenStreetMap contributors & CARTO',
+        maxZoom: 19
+      }).addTo(map);
+    }
+
+    function jumpTo(presetKey) {
+      const preset = presets[presetKey];
+      if (!preset || !map) return;
+
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      if (event && event.target) event.target.classList.add('active');
+
+      map.flyTo(preset.center, preset.zoom, { duration: 1.2 });
+    }
+
+    function updateBoundsDisplay() {
+      if (!map) return;
+      const bounds = map.getBounds();
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      
+      document.getElementById('swCoord').textContent = `${sw.lat.toFixed(4)}, ${sw.lng.toFixed(4)}`;
+      document.getElementById('neCoord').textContent = `${ne.lat.toFixed(4)}, ${ne.lng.toFixed(4)}`;
+      document.getElementById('zoomLevel').textContent = map.getZoom();
+    }
+
+    function triggerFetchForLeaflet() {
+      if (!map) return;
+      const bounds = map.getBounds();
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      fetchShops(sw.lat.toFixed(6), sw.lng.toFixed(6), ne.lat.toFixed(6), ne.lng.toFixed(6));
+    }
+
+    function debounceFetchShops(ms) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(triggerFetchForLeaflet, ms);
+    }
+
+    async function fetchShops(swLat, swLng, neLat, neLng) {
+      const endpoint = `/api/shops/viewport?swLat=${swLat}&swLng=${swLng}&neLat=${neLat}&neLng=${neLng}`;
+      currentApiUrl = window.location.origin + endpoint;
+      document.getElementById('apiUrlDisplay').textContent = endpoint;
+
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        const duration = Math.round(performance.now() - startTime);
+
+        document.getElementById('latencyBadge').textContent = `${duration} ms`;
+        lastResponseData = data;
+        document.getElementById('jsonBody').textContent = JSON.stringify(data, null, 2);
+
+        if (data.status === 200 && Array.isArray(data.result)) {
+          currentShops = data.result;
+          document.getElementById('shopCount').textContent = data.total;
+        } else {
+          currentShops = [];
+          document.getElementById('shopCount').textContent = '0';
+        }
+
+        renderLeafletMarkers();
+        renderShopCards();
+      } catch (err) {
+        console.error('Failed to fetch shops in viewport:', err);
+        document.getElementById('latencyBadge').textContent = 'Error';
+      }
+    }
+
+    function createCleanPinIcon(isOpen) {
+      const statusClass = isOpen ? 'pin-open' : 'pin-closed';
+      return L.divIcon({
+        className: 'clean-pin-container',
+        html: `
+          <div class="clean-pin ${statusClass}">
+            <div class="pin-halo"></div>
+            <div class="pin-bubble">
+              <svg class="pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            </div>
+            <div class="pin-point"></div>
+          </div>
+        `,
+        iconSize: [36, 42],
+        iconAnchor: [18, 42],
+        popupAnchor: [0, -44]
+      });
+    }
+
+    function renderLeafletMarkers() {
+      if (!markersLayer) return;
+      markersLayer.clearLayers();
+
+      currentShops.forEach((shop) => {
+        const isOpen = shop.open_status === 'Open';
+        const marker = L.marker([shop.latitude, shop.longitude], { 
+          icon: createCleanPinIcon(isOpen) 
+        });
+
+        // Hover tooltip for quick preview without clicking
+        marker.bindTooltip(escapeHtml(shop.shop_name), {
+          direction: 'top',
+          offset: [0, -40],
+          className: 'clean-tooltip'
+        });
+
+        const popupContent = `
+          <div class="clean-popup">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:4px;">
+              <div class="clean-popup-title">${escapeHtml(shop.shop_name)}</div>
+              <span class="shop-status ${isOpen ? 'status-open' : 'status-closed'}">${escapeHtml(shop.open_status || (isOpen ? 'Open' : 'Closed'))}</span>
+            </div>
+
+            <div class="clean-popup-sub">
+              <span style="font-family:monospace; background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-weight:600;">${escapeHtml(shop.code || 'N/A')}</span>
+              ${shop.shop_type ? `<span>&bull; ${escapeHtml(shop.shop_type)}</span>` : ''}
+            </div>
+
+            ${shop.phone ? `
+              <div style="font-size: 0.74rem; color: #cbd5e1; margin-top:2px;">
+                📞 <a href="tel:${escapeHtml(shop.phone)}" style="color:#38bdf8; text-decoration:none; font-weight:500;">${escapeHtml(shop.phone)}</a>
+              </div>` : ''
+            }
+
+            ${shop.email ? `
+              <div style="font-size: 0.74rem; color: #94a3b8;">
+                ✉️ ${escapeHtml(shop.email)}
+              </div>` : ''
+            }
+
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; margin-top:4px; font-size:0.72rem;">
+              <span style="color:#64748b; font-family:monospace;">${shop.latitude.toFixed(5)}, ${shop.longitude.toFixed(5)}</span>
+              <a href="https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}" target="_blank" rel="noopener noreferrer" style="color:#38bdf8; text-decoration:none; font-weight:600; display:flex; align-items:center; gap:2px;">Directions &rarr;</a>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.shopId = shop.id;
+        markersLayer.addLayer(marker);
+      });
+    }
+
+    function renderShopCards() {
+      const container = document.getElementById('shopsList');
+      const filter = (document.getElementById('searchInput').value || '').toLowerCase();
+
+      const filtered = currentShops.filter(s => 
+        s.shop_name.toLowerCase().includes(filter) || 
+        (s.shop_type && s.shop_type.toLowerCase().includes(filter)) ||
+        (s.code && s.code.toLowerCase().includes(filter))
+      );
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-state">No shops found in current viewport</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(shop => {
+        const isOpen = shop.open_status === 'Open';
+        return `
+          <div class="shop-card" id="card-${shop.id}" onclick="focusShop(${shop.id}, ${shop.latitude}, ${shop.longitude})">
+            <div class="shop-name">
+              <span>${escapeHtml(shop.shop_name)}</span>
+              <span class="shop-status ${isOpen ? 'status-open' : 'status-closed'}">${escapeHtml(shop.open_status || (isOpen ? 'Open' : 'Closed'))}</span>
+            </div>
+            
+            <div class="shop-tags">
+              ${(shop.shop_type || 'Retail').split(',').map(t => `<span class="shop-tag">${escapeHtml(t.trim())}</span>`).join('')}
+              ${shop.code ? `<span class="shop-tag" style="color:#38bdf8; font-family:monospace;">${escapeHtml(shop.code)}</span>` : ''}
+            </div>
+
+            <div class="shop-coords">
+              📍 ${shop.latitude.toFixed(5)}, ${shop.longitude.toFixed(5)}
+            </div>
+
+            <div class="shop-contact">
+              ${shop.phone ? `<div>📞 ${escapeHtml(shop.phone)}</div>` : ''}
+              ${shop.email ? `<div>✉️ ${escapeHtml(shop.email)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function focusShop(shopId, lat, lng) {
+      document.querySelectorAll('.shop-card').forEach(c => c.classList.remove('active'));
+      const targetCard = document.getElementById(`card-${shopId}`);
+      if (targetCard) targetCard.classList.add('active');
+
+      if (map) {
+        map.flyTo([lat, lng], 16, { duration: 1 });
+        markersLayer.eachLayer(layer => {
+          if (layer.shopId === shopId) {
+            setTimeout(() => layer.openPopup(), 1000);
+          }
+        });
+      }
+    }
+
+    function copyApiUrl() {
+      if (!currentApiUrl) return;
+      navigator.clipboard.writeText(currentApiUrl);
+      const btn = document.querySelector('.copy-btn');
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = originalText, 1500);
+    }
+
+    function toggleJsonModal() {
+      const modal = document.getElementById('jsonModal');
+      modal.classList.toggle('open');
+    }
+
+    function handleModalBackdropClick(e) {
+      if (e.target.id === 'jsonModal') {
+        toggleJsonModal();
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Initialize on DOM load
+    window.addEventListener('DOMContentLoaded', async () => {
+      await fetchConfig();
+      initLeafletMap();
+    });
+  </script>
+</body>
+</html>
